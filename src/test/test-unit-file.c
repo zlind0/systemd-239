@@ -532,7 +532,7 @@ static void test_load_env_file_1(void) {
 
         fd = mkostemp_safe(name);
         assert_se(fd >= 0);
-        assert_se(write(fd, env_file_1, sizeof(env_file_1)) == sizeof(env_file_1));
+        assert_se(write(fd, env_file_1, strlen(env_file_1)) == strlen(env_file_1));
 
         r = load_env_file(NULL, name, NULL, &data);
         assert_se(r == 0);
@@ -554,7 +554,7 @@ static void test_load_env_file_2(void) {
 
         fd = mkostemp_safe(name);
         assert_se(fd >= 0);
-        assert_se(write(fd, env_file_2, sizeof(env_file_2)) == sizeof(env_file_2));
+        assert_se(write(fd, env_file_2, strlen(env_file_2)) == strlen(env_file_2));
 
         r = load_env_file(NULL, name, NULL, &data);
         assert_se(r == 0);
@@ -571,7 +571,7 @@ static void test_load_env_file_3(void) {
 
         fd = mkostemp_safe(name);
         assert_se(fd >= 0);
-        assert_se(write(fd, env_file_3, sizeof(env_file_3)) == sizeof(env_file_3));
+        assert_se(write(fd, env_file_3, strlen(env_file_3)) == strlen(env_file_3));
 
         r = load_env_file(NULL, name, NULL, &data);
         assert_se(r == 0);
@@ -586,7 +586,7 @@ static void test_load_env_file_4(void) {
 
         fd = mkostemp_safe(name);
         assert_se(fd >= 0);
-        assert_se(write(fd, env_file_4, sizeof(env_file_4)) == sizeof(env_file_4));
+        assert_se(write(fd, env_file_4, strlen(env_file_4)) == strlen(env_file_4));
 
         r = load_env_file(NULL, name, NULL, &data);
         assert_se(r == 0);
@@ -605,7 +605,7 @@ static void test_load_env_file_5(void) {
 
         fd = mkostemp_safe(name);
         assert_se(fd >= 0);
-        assert_se(write(fd, env_file_5, sizeof(env_file_5)) == sizeof(env_file_5));
+        assert_se(write(fd, env_file_5, strlen(env_file_5)) == strlen(env_file_5));
 
         r = load_env_file(NULL, name, NULL, &data);
         assert_se(r == 0);
