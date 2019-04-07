@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 
 #include "macro.h"
@@ -105,3 +106,5 @@ int read_nul_string(FILE *f, char **ret);
 int mkdtemp_malloc(const char *template, char **ret);
 
 int read_line(FILE *f, size_t limit, char **ret);
+
+int warn_file_is_world_accessible(const char *filename, struct stat *st, const char *unit, unsigned line);

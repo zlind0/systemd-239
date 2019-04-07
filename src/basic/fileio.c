@@ -1797,3 +1797,28 @@ int read_line(FILE *f, size_t limit, char **ret) {
 
         return (int) count;
 }
+
+int warn_file_is_world_accessible(const char *filename, struct stat *st, const char *unit, unsigned line) {
+        struct stat _st;
+
+        if (!filename)
+                return 0;
+
+        if (!st) {
+                if (stat(filename, &_st) < 0)
+                        return -errno;
+                st = &_st;
+        }
+
+        if ((st->st_mode & S_IRWXO) == 0)
+                return 0;
+
+        if (unit)
+                log_syntax(unit, LOG_WARNING, filename, line, 0,
+                           "%s has %04o mode that is too permissive, please adjust the access mode.",
+                           filename, st->st_mode & 07777);
+        else
+                log_warning("%s has %04o mode that is too permissive, please adjust the access mode.",
+                            filename, st->st_mode & 07777);
+        return 0;
+}
