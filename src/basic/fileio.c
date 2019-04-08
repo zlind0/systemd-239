@@ -386,6 +386,7 @@ int read_full_virtual_file(const char *filename, char **ret_contents, size_t *re
 
 int read_full_stream_full(
                 FILE *f,
+                const char *filename,
                 ReadFullFileFlags flags,
                 char **ret_contents,
                 size_t *ret_size) {
@@ -418,6 +419,9 @@ int read_full_stream_full(
                          * makes us notice the EOF. */
                         if (st.st_size > 0)
                                 n_next = st.st_size + 1;
+
+                        if (flags & READ_FULL_FILE_SECURE)
+                                (void) warn_file_is_world_accessible(filename, &st, NULL, 0);
                 }
         }
 
@@ -508,7 +512,7 @@ int read_full_file_full(const char *filename, ReadFullFileFlags flags, char **co
 
         (void) __fsetlocking(f, FSETLOCKING_BYCALLER);
 
-        return read_full_stream_full(f, flags, contents, size);
+        return read_full_stream_full(f, filename, flags, contents, size);
 }
 
 static int parse_env_file_internal(
