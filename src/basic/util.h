@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <malloc.h>
 #include <limits.h>
 #include <locale.h>
 #include <stdarg.h>
@@ -259,3 +260,20 @@ static inline void* explicit_bzero_safe(void *p, size_t l) {
 #else
 void *explicit_bzero_safe(void *p, size_t l);
 #endif
+
+static inline void* erase_and_free(void *p) {
+        size_t l;
+
+        if (!p)
+                return NULL;
+
+        l = malloc_usable_size(p);
+        explicit_bzero_safe(p, l);
+        free(p);
+
+        return NULL;
+}
+
+static inline void erase_and_freep(void *p) {
+        erase_and_free(*(void**) p);
+}
