@@ -29,6 +29,7 @@ typedef enum {
 typedef enum {
         READ_FULL_FILE_SECURE              = 1 << 0,
         READ_FULL_FILE_WARN_WORLD_READABLE = 1 << 3,
+        READ_FULL_FILE_CONNECT_SOCKET      = 1 << 4,
 } ReadFullFileFlags;
 
 int write_string_stream_ts(FILE *f, const char *line, WriteStringFileFlags flags, struct timespec *ts);
