@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <setjmp.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,6 +11,7 @@
 #include <sys/prctl.h>
 #include <sys/reboot.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #if HAVE_SECCOMP
 #include <seccomp.h>
@@ -136,9 +138,40 @@ static sd_id128_t arg_machine_id;
 static EmergencyAction arg_cad_burst_action;
 static CPUSet arg_cpu_affinity;
 static NUMAPolicy arg_numa_policy;
+static bool reexec_jmp_can = false;
+static bool reexec_jmp_inited = false;
+static sigjmp_buf reexec_jmp_buf;
 
 static int parse_configuration(const struct rlimit *saved_rlimit_nofile,
                                const struct rlimit *saved_rlimit_memlock);
+
+static void reexec_handler(int sig) {
+	reexec_jmp_can = true;
+}
+
+_noreturn_ static void freeze_wait_upgrade(void) {
+        struct sigaction sa;
+        sigset_t ss;
+        
+	sigemptyset(&ss);
+        sigaddset(&ss, SIGTERM);
+        sigprocmask(SIG_UNBLOCK, &ss, NULL);
+
+        sa.sa_handler = reexec_handler;
+        sa.sa_flags = SA_RESTART;
+        sigaction(SIGTERM, &sa, NULL);
+
+	log_error("freeze_wait_upgrade: %d\n", reexec_jmp_inited);
+        reexec_jmp_can = false;
+        while(1) {
+                usleep(10000);
+                if (reexec_jmp_inited && reexec_jmp_can) {
+                        log_error("goto manager_reexecute.\n");
+                        siglongjmp(reexec_jmp_buf, 1);
+                }
+                waitpid(-1, NULL, WNOHANG);
+        }
+}
 
 _noreturn_ static void freeze_or_exit_or_reboot(void) {
 	/* If we are running in a contianer, let's prefer exiting, after all we can propagate an exit code to the
@@ -158,7 +191,8 @@ _noreturn_ static void freeze_or_exit_or_reboot(void) {
         }
 
         log_emergency("Freezing execution.");
-        freeze();
+	freeze_wait_upgrade();
+
 }
 
 _noreturn_ static void crash(int sig) {
@@ -1675,6 +1709,10 @@ static int invoke_main_loop(
         assert(ret_switch_root_init);
         assert(ret_error_message);
 
+	reexec_jmp_inited = true;
+        if (sigsetjmp(reexec_jmp_buf, 1))
+                goto manager_reexecute;
+
         for (;;) {
                 r = manager_loop(m);
                 if (r < 0) {
@@ -1717,6 +1755,7 @@ static int invoke_main_loop(
 
                 case MANAGER_REEXECUTE:
 
+manager_reexecute:
                         r = prepare_reexecute(m, &arg_serialization, ret_fds, false);
                         if (r < 0) {
                                 *ret_error_message = "Failed to prepare for reexecution";
