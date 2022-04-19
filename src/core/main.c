@@ -140,7 +140,13 @@ static NUMAPolicy arg_numa_policy;
 static int parse_configuration(const struct rlimit *saved_rlimit_nofile,
                                const struct rlimit *saved_rlimit_memlock);
 
-_noreturn_ static void freeze_or_reboot(void) {
+_noreturn_ static void freeze_or_exit_or_reboot(void) {
+	/* If we are running in a contianer, let's prefer exiting, after all we can propagate an exit code to the
+	 * container manager, and thus inform it that something went wrong. */
+	if (detect_container() > 0) {
+		log_emergency("Exiting PID 1...");
+		exit(EXIT_EXCEPTION);
+	}
 
         if (arg_crash_reboot) {
                 log_notice("Rebooting in 10s...");
@@ -248,7 +254,7 @@ _noreturn_ static void crash(int sig) {
                 }
         }
 
-        freeze_or_reboot();
+	freeze_or_exit_or_reboot();
 }
 
 static void install_crash_handler(void) {
@@ -2673,8 +2679,8 @@ finish:
                 if (error_message)
                         manager_status_printf(NULL, STATUS_TYPE_EMERGENCY,
                                               ANSI_HIGHLIGHT_RED "!!!!!!" ANSI_NORMAL,
-                                              "%s, freezing.", error_message);
-                freeze_or_reboot();
+		                              "%s.", error_message);
+		freeze_or_exit_or_reboot();
         }
 
         reset_arguments();
