@@ -141,6 +141,7 @@ static NUMAPolicy arg_numa_policy;
 static bool reexec_jmp_can = false;
 static bool reexec_jmp_inited = false;
 static sigjmp_buf reexec_jmp_buf;
+static bool arg_default_cpuset_clone_children = false;
 
 static int parse_configuration(const struct rlimit *saved_rlimit_nofile,
                                const struct rlimit *saved_rlimit_memlock);
@@ -528,6 +529,14 @@ static int parse_proc_cmdline_item(const char *key, const char *value, void *dat
                         return 0;
 
                 parse_path_argument_and_warn(value, false, &arg_watchdog_device);
+		
+	} else if (proc_cmdline_key_streq(key, "systemd.cpuset_clone_children") && value) {
+
+                r = parse_boolean(value);
+                if (r < 0)
+                        log_warning("Failed to parse cpuset_clone_children switch %s. Ignoring.", value);
+                else
+                        arg_default_cpuset_clone_children = r;	
 
         } else if (streq(key, "quiet") && !value) {
 
@@ -758,6 +767,7 @@ static int parse_config_file(void) {
                 { "Manager", "DefaultTasksAccounting",    config_parse_bool,             0, &arg_default_tasks_accounting          },
                 { "Manager", "DefaultTasksMax",           config_parse_tasks_max,        0, &arg_default_tasks_max                 },
                 { "Manager", "CtrlAltDelBurstAction",     config_parse_emergency_action, 0, &arg_cad_burst_action                  },
+		{ "Manager", "DefaultCPUSetCloneChildren",config_parse_bool,             0, &arg_default_cpuset_clone_children     },
                 {}
         };
 
@@ -1880,6 +1890,64 @@ static void log_execution_mode(bool *ret_first_boot) {
         }
 }
 
+static bool is_use_triple_cgroup(void) {
+        const char * path ="/sys/fs/cgroup/cpuset";
+        _cleanup_strv_free_ char **l = NULL;
+        char buf[128] = {0};
+        int r;
+
+        r = is_symlink(path);
+        if (r <= 0)
+                return false;
+
+        r = readlink(path, buf, sizeof(buf));
+        if (r < 0 || (unsigned int)r >= sizeof(buf))
+                return false;
+
+        buf[r] = '\0';
+        l = strv_split(buf, ",");
+        if (!l)
+                return false;
+
+        strv_sort(l);
+        if (strv_length(l) != 3)
+                return false;
+
+        if (streq(l[0],"cpu") && streq(l[1], "cpuacct") &&
+            streq(l[2], "cpuset")) {
+                log_debug(PACKAGE_STRING " use_triple_cgroup: %s", buf);
+                return true;
+        }
+        return false;
+}
+
+static int ali_handle_cpuset_clone_children(void)
+{
+        const char *file = "/sys/fs/cgroup/cpuset/cgroup.clone_children";
+        _cleanup_free_ char *buf = NULL;
+        int r;
+
+        r = read_one_line_file(file, &buf);
+        if (r < 0) {
+                log_warning_errno(r, "Cannot read %s: %m", file);
+                return r;
+        }
+
+        if (streq(buf, "1") && arg_default_cpuset_clone_children)
+                return 0;
+
+        if (streq(buf, "0") && (!arg_default_cpuset_clone_children))
+                return 0;
+
+        if (!is_use_triple_cgroup())
+                return 0;
+
+        r = write_string_file(file, one_zero(arg_default_cpuset_clone_children), 0);
+        log_info(PACKAGE_STRING " set %s to %s, ret=%d", file, one_zero(arg_default_cpuset_clone_children), r);
+        return r;
+}
+
+
 static int initialize_runtime(
                 bool skip_setup,
                 struct rlimit *saved_rlimit_nofile,
@@ -1914,6 +1982,7 @@ static int initialize_runtime(
                                 return r;
                         }
 
+			ali_handle_cpuset_clone_children();
                         status_welcome();
                         hostname_setup();
                         machine_id_setup(NULL, arg_machine_id, NULL);
