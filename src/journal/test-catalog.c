@@ -201,7 +201,8 @@ static void test_catalog_file_lang(void) {
 
 int main(int argc, char *argv[]) {
         _cleanup_(unlink_tempfilep) char database[] = "/tmp/test-catalog.XXXXXX";
-        _cleanup_free_ char *text = NULL, *catalog_dir = NULL;
+        _cleanup_free_ char *text = NULL;
+        char *catalog_dir = CATALOG_DIR;
         int r;
 
         setlocale(LC_ALL, "de_DE.UTF-8");
@@ -214,10 +215,9 @@ int main(int argc, char *argv[]) {
          * If it is not, e.g. installed by systemd-tests package, then use installed catalogs. */
         if (test_is_running_from_builddir(NULL)) {
                 assert_se(catalog_dir = path_join(NULL, ABS_BUILD_DIR, "catalog"));
-                catalog_dirs = STRV_MAKE(catalog_dir);
-        } else
-                catalog_dirs = STRV_MAKE(CATALOG_DIR);
+        }
 
+        catalog_dirs = STRV_MAKE(catalog_dir);
         assert_se(access(catalog_dirs[0], F_OK) >= 0);
         log_notice("Using catalog directory '%s'", catalog_dirs[0]);
 
@@ -241,6 +241,10 @@ int main(int argc, char *argv[]) {
 
         assert_se(catalog_get(database, SD_MESSAGE_COREDUMP, &text) >= 0);
         printf(">>>%s<<<\n", text);
+
+        /* Only in this case, catalog_dir is malloced */
+        if (test_is_running_from_builddir(NULL))
+                free(catalog_dir);
 
         return 0;
 }
