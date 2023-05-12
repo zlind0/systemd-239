@@ -182,7 +182,7 @@ static inline int missing_setns(int fd, int nstype) {
 /* ======================================================================= */
 
 static inline pid_t raw_getpid(void) {
-#if defined(__alpha__)
+#if defined(__alpha__) || defined(__sw_64__)
         return (pid_t) syscall(__NR_getxpid);
 #else
         return (pid_t) syscall(__NR_getpid);
@@ -405,6 +405,8 @@ static inline int missing_bpf(int cmd, union bpf_attr *attr, size_t size) {
 #      define __NR_statx 360
 #    elif defined __x86_64__
 #      define __NR_statx 332
+#    elif defined __sw_64__
+#      define __NR_statx 518
 #    else
 #      warning "__NR_statx not defined for your architecture"
 #    endif

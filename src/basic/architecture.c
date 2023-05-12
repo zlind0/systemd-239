@@ -120,6 +120,8 @@ int uname_architecture(void) {
                 { "arceb",      ARCHITECTURE_ARC_BE   },
 #elif defined(__loongarch64)
 		{ "loongarch64", ARCHITECTURE_LOONGARCH64 },
+#elif defined(__sw_64__)
+                { "sw_64" ,     ARCHITECTURE_SW_64    },
 #else
 #error "Please register your architecture here!"
 #endif
@@ -176,6 +178,7 @@ static const char *const architecture_table[_ARCHITECTURE_MAX] = {
         [ARCHITECTURE_ARC] = "arc",
         [ARCHITECTURE_ARC_BE] = "arc-be",
 	[ARCHITECTURE_LOONGARCH64] = "loongarch64",
+        [ARCHITECTURE_SW_64] = "sw_64",
 };
 
 DEFINE_STRING_TABLE_LOOKUP(architecture, int);

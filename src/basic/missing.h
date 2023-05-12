@@ -646,7 +646,7 @@ struct input_mask {
  */
 
 #ifndef __O_TMPFILE
-#if defined(__alpha__)
+#if defined(__alpha__) || defined(__sw_64__)
 #define __O_TMPFILE     0100000000
 #elif defined(__parisc__) || defined(__hppa__)
 #define __O_TMPFILE     0400000000
