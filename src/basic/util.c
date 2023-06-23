@@ -684,3 +684,21 @@ void disable_coredumps(void) {
         if (r < 0)
                 log_debug_errno(r, "Failed to turn off coredumps, ignoring: %m");
 }
+
+#if !HAVE_EXPLICIT_BZERO
+/*
+ * The pointer to memset() is volatile so that compiler must de-reference the pointer and can't assume that
+ * it points to any function in particular (such as memset(), which it then might further "optimize"). This
+ * approach is inspired by openssl's crypto/mem_clr.c.
+ */
+typedef void *(*memset_t)(void *,int,size_t);
+
+static volatile memset_t memset_func = memset;
+
+void* explicit_bzero_safe(void *p, size_t l) {
+        if (l > 0)
+                memset_func(p, '\0', l);
+
+        return p;
+}
+#endif

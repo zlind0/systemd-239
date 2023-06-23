@@ -248,3 +248,14 @@ int version(void);
 int str_verscmp(const char *s1, const char *s2);
 
 void disable_coredumps(void);
+
+#if HAVE_EXPLICIT_BZERO
+static inline void* explicit_bzero_safe(void *p, size_t l) {
+        if (l > 0)
+                explicit_bzero(p, l);
+
+        return p;
+}
+#else
+void *explicit_bzero_safe(void *p, size_t l);
+#endif
