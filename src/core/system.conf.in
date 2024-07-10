@@ -67,3 +67,5 @@ DefaultLimitCORE=0:infinity
 #DefaultLimitRTTIME=
 #IPAddressAllow=
 #IPAddressDeny=
+#FullDelegation=no
+#FullDelegationDeviceCGroup=yes

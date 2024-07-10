@@ -142,6 +142,8 @@ static bool reexec_jmp_can = false;
 static bool reexec_jmp_inited = false;
 static sigjmp_buf reexec_jmp_buf;
 static bool arg_default_cpuset_clone_children = false;
+static bool arg_full_delegation = false;
+static bool arg_full_delegation_devicecg = true;
 
 static int parse_configuration(const struct rlimit *saved_rlimit_nofile,
                                const struct rlimit *saved_rlimit_memlock);
@@ -768,6 +770,9 @@ static int parse_config_file(void) {
                 { "Manager", "DefaultTasksMax",           config_parse_tasks_max,        0, &arg_default_tasks_max                 },
                 { "Manager", "CtrlAltDelBurstAction",     config_parse_emergency_action, 0, &arg_cad_burst_action                  },
 		{ "Manager", "DefaultCPUSetCloneChildren",config_parse_bool,             0, &arg_default_cpuset_clone_children     },
+                { "Manager", "FullDelegation",            config_parse_bool,             0, &arg_full_delegation                   },
+                { "Manager", "FullDelegationDeviceCGroup",config_parse_bool,             0, &arg_full_delegation_devicecg          },
+
                 {}
         };
 
@@ -817,6 +822,8 @@ static void set_manager_defaults(Manager *m) {
         m->default_memory_accounting = arg_default_memory_accounting;
         m->default_tasks_accounting = arg_default_tasks_accounting;
         m->default_tasks_max = arg_default_tasks_max;
+        m->full_delegation = arg_full_delegation;
+        m->full_delegation_devicecg = arg_full_delegation_devicecg;
 
         manager_set_default_rlimits(m, arg_default_rlimit);
         manager_environment_add(m, NULL, arg_default_environment);

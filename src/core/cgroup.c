@@ -1651,6 +1651,18 @@ static int unit_create_cgroup(
         /* Keep track that this is now realized */
         u->cgroup_realized = true;
         u->cgroup_realized_mask = target_mask;
+
+        // While realizing cgroup, we don't realize delegated cgroup, therefore, target_mask
+        // doesn't contain delegated cgroup controller bit, and u->cgroup_realized_mask will
+        // not contain delegated cgroup controller bit as well. This unit will be in a state
+        // as if delegated cgroup is not set, which is not expected.
+        // If this is not present, delegated cgroup will be set every 2 systemctl daemon-reload
+        if (u->manager->full_delegation && unit_cgroup_delegate(u))
+                u->cgroup_realized_mask |= unit_get_delegate_mask(u);
+
+        if (u->manager->full_delegation_devicecg && unit_cgroup_delegate(u))
+                u->cgroup_realized_mask |= (unit_get_delegate_mask(u) & CGROUP_MASK_DEVICES);
+
         u->cgroup_enabled_mask = enable_mask;
         u->cgroup_bpf_state = needs_bpf ? UNIT_CGROUP_BPF_ON : UNIT_CGROUP_BPF_OFF;
 
@@ -1898,6 +1910,12 @@ static int unit_realize_cgroup_now(Unit *u, ManagerState state) {
         r = unit_create_cgroup(u, target_mask, enable_mask, needs_bpf);
         if (r < 0)
                 return r;
+
+        if (u->manager->full_delegation && unit_cgroup_delegate(u))
+                target_mask ^= u->cgroup_realized_mask;
+
+        if (u->manager->full_delegation_devicecg && unit_cgroup_delegate(u))
+                target_mask ^= (u->cgroup_realized_mask & CGROUP_MASK_DEVICES);
 
         /* Finally, apply the necessary attributes. */
         cgroup_context_apply(u, target_mask, apply_bpf, state);
@@ -2840,6 +2858,12 @@ int unit_reset_ip_accounting(Unit *u) {
 
 void unit_invalidate_cgroup(Unit *u, CGroupMask m) {
         assert(u);
+
+        if (u->manager->full_delegation)
+                m ^= unit_get_delegate_mask(u); // don't invalidate delegated cgroup
+
+        if (u->manager->full_delegation_devicecg)
+                m ^= (unit_get_delegate_mask(u) & CGROUP_MASK_DEVICES); // don't invalidate device cgroup if delegate=yes
 
         if (!UNIT_HAS_CGROUP_CONTEXT(u))
                 return;
